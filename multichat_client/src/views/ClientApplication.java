@@ -95,7 +95,7 @@ public class ClientApplication extends JFrame {
 		//127.0.0.1
 		gson = new Gson();
 		try {
-			socket = new Socket("192.168.2.101", 9090);
+			socket = new Socket("127.0.0.1", 9090);
 			ClientRecive clientRecive = new ClientRecive(socket);
 			clientRecive.start();
 		} catch (UnknownHostException e1) {

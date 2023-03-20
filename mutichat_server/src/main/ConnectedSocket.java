@@ -23,10 +23,10 @@ import lombok.Getter;
 @Getter
 public class ConnectedSocket extends Thread{
 	
-	
+	// 현재 접속한 소켓
 	private static List<ConnectedSocket> connectedSocketList = new ArrayList<>();
+	// 현재 만들어진 방
 	private static List<Room> roomList = new ArrayList<>();
-	private static int index = 0;
 	private Socket socket;
 	private String username;
 	
@@ -37,6 +37,8 @@ public class ConnectedSocket extends Thread{
 		gson = new Gson();
 	}
 	
+	// 소켓을 받을 동안 계속해서 돌고 있으며
+	// 소켓 연결이 끊기면 소켓 리스트에서 삭제를 시킨다.
 	@Override
 	public void run() {
 		BufferedReader bufferedReader;
@@ -57,13 +59,14 @@ public class ConnectedSocket extends Thread{
 			
 		}
 	
-	
+	// 클라이언트가 보낸 요청사항을 확인하고 처리하는 메소드 입니다.
 	private void requestMapping(String requestJson) {
 		RequestDto<?> requestDto = gson.fromJson(requestJson, RequestDto.class);
 		
 		Room room = null;
 		
-		
+		// switch문을 통해 클라이언트가 보낸 메세지를 requestDto를 통해서 확인을 하고 
+		// 요청에 맞는 작업을 수행합니다.
 		switch(requestDto.getResource()) {
 			case "usernameCheck":
 				checkUsername((String)requestDto.getBody());
@@ -105,6 +108,8 @@ public class ConnectedSocket extends Thread{
 		}
 	}
 	
+	// 로그인 요청을 보낸 상황에서 유저네임이 동일한것이 있는지 확인합니다.
+	// 확인 후 sendToMe를 통해서 다시 처리합니다.
 	private void checkUsername(String username) {
 		if(username.isBlank()) {
 			sendToMe(new ResponseDto<String>("usernameCheckIsBlank", "사용자 이름은 공백일 수 없습니다."));
@@ -123,9 +128,11 @@ public class ConnectedSocket extends Thread{
 		sendToMe(refleshRommList());
 	}
 	
+	// 룸 리스트를 갱신하는 메소드 입니다.
 	private ResponseDto<List<Map<String, String>>> refleshRommList() {
 		List<Map<String, String>> roomNameList = new ArrayList<>();
 		
+		// 룸이 만들어짐과 동시에 룸 객체에 방장정보와 룸의 이름을 넣습니다.
 		for(Room room : roomList) {
 			Map<String, String> roomInfo = new HashMap<>();
 			roomInfo.put("roomName", room.getRoomName());
@@ -136,6 +143,7 @@ public class ConnectedSocket extends Thread{
 		return responseDto;
 	}
 	
+	// 현재 방에 접속된 유저가 누구인지 찾아주는 메소드 입니다.
 	private Room findConnectedRoom(String username) {
 		Room room = null;
 		for(Room r : roomList) {
@@ -149,6 +157,7 @@ public class ConnectedSocket extends Thread{
 		return null;
 	}
 	
+	// 현재 생성된 룸의 이름을 찾게 해주는 메소드입니다.
 	private Room findRoom(Map<String, String> roomInfo) {
 		for(Room room : roomList) {
 			if(room.getRoomName().equals(roomInfo.get("roomName")) 
@@ -159,6 +168,7 @@ public class ConnectedSocket extends Thread{
 		return null;
 	}
 	
+	// 방에 접속되어 있는 유저의 리스트를 갱신을 해주는 메소드 입니다.
 	private void refreshUsernameList(Room room){
 		List<String> usernameList = new ArrayList<>();
 		usernameList.add("방제목: " + room.getRoomName());
@@ -173,19 +183,21 @@ public class ConnectedSocket extends Thread{
 		sendToAll(responseDto, room.getUsers());
 	}
 	
+	// 만약 방장이 나가면 해당 방 유저에게 방을 나가게 해주는 메소드 입니다.
 	private void exitRoomAll(Room room) {
 		sendToAll(new ResponseDto<String>("exitRoom", null), room.getUsers());
 		roomList.remove(room);
 		sendToAll(refleshRommList(), connectedSocketList);
 	}
 	
-	
+	// 만약 방장이 아닌 일반 유저가 나갈시에 실행되는 메소드 입니다.
 	private void exitRoom(Room room) {
 		room.getUsers().remove(this);
 		sendToMe(new ResponseDto<String>("exitRoom", null));
 		refreshUsernameList(room);
 	}
 	
+	// 클라이언트가 요청을 한 후에 해당 클라이언트에 응답을 해주는 메소드입니다.
 	private void sendToMe(ResponseDto<?> responseDto) {
 		
 		try {
@@ -200,6 +212,7 @@ public class ConnectedSocket extends Thread{
 		
 	}
 	
+	// 클라이언트가 요청 후 모든 클라이언트에게 정보를 보내는 용도로 사용되는 메소드입니다.
 	private void sendToAll(ResponseDto<?> responseDto, List<ConnectedSocket> connectedSockets) {
 		for(ConnectedSocket connectedSocket : connectedSockets) {
 			try {
